@@ -1,0 +1,101 @@
+---
+title: "Personalized movie recommender"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  html_notebook:
+    toc: yes
+    toc_float: yes
+author: Suriya Prakaash.
+---
+## Personalized movie recommender
+```{r}
+library(NbClust)
+library(ggplot2)
+library(cluster)
+library(factoextra)
+library(dplyr)
+set.seed(1122)
+rm(list=ls())
+ratings <- read.csv("ratings.csv")
+movies <- read.csv("movies.csv")
+
+index <- which(ratings$userId == 111)
+user111 <- ratings[index,]$movieId
+user <- unique(ratings$userId)    
+
+for (i in user)
+{
+a <- c(ratings$movieId[which(ratings$userId == i)])
+
+myfile <- file.path("E:/movie_file", paste0("User", i, ".txt"))  
+
+for(j in a)
+{
+title <- movies$title[which(movies$movieId == j)]
+write.table(title, file = myfile, sep = "\n",row.names = FALSE, append = TRUE, col.names = FALSE,quote = FALSE)
+  
+}
+  
+}
+index <- which(ratings$userId == 111)
+user111 <- ratings[index,]$movieId
+df_user <- data.frame(matrix(0, ncol = 20, nrow = length(user111)))
+rownames(df_user) <- c(user111)
+colnames(df_user) <- c("Action", "Adventure", "Animation", "Children", "Comedy", "Crime", "Documentary", "Drama", "Fantasy","Film-Noir", "Horror", "IMAX", "Musical", "Mystery", "Romance", "Sci-Fi","Thriller", "War", "Western", "(nogenres listed)")
+
+for(i in user111)
+{
+  genres <- as.character(movies[which(movies$movieId == i), 3])
+  strng <- strsplit(genres, "|", fixed = TRUE)
+  for(j in strng[[1]])
+  {
+    df_user[toString(i), j] <- 1
+  }
+}
+
+v <- colSums(df_user)
+Userv = v/length(user111)
+
+R <- sample(movies$movieId, 10)
+df_movie <- data.frame(matrix(0, ncol = 20, nrow=length(R)))
+rownames(df_movie) <- c(R)
+colnames(df_movie) <- c("Action", "Adventure", "Animation", "Children", "Comedy", "Crime", "Documentary", "Drama", "Fantasy","Film-Noir", "Horror", "IMAX", "Musical", "Mystery", "Romance", "Sci-Fi","Thriller", "War", "Western", "(nogenres listed)")
+
+for(i in R)
+{
+  genres1 <- as.character(movies[which(movies$movieId == i), 3])
+  strng1 <- strsplit(genres1, "|", fixed = TRUE)
+  for(j in strng1[[1]])
+  {
+    df_movie[toString(i), j] <- 1
+  }
+}
+
+my.cosine <- function(x,y) {
+  sum(x*y) / (norm(x, type="2") * norm(y, type = "2"))
+}
+
+df_sample <- data.frame(matrix(ncol = 2, nrow = length(R)))
+
+count = 1
+
+for(k in R)
+{
+  val <- my.cosine(Userv, as.numeric(df_movie[toString(k),]))
+  df_sample[count, 1] <- k
+  df_sample[count, 2] <- val
+  count = count + 1
+}
+df_sample <- df_sample[order(df_sample$X2, decreasing = TRUE),]
+print("top 5 movies and their similarities to user  are:")
+count = 1
+for(i in df_sample$X1[1:5])
+{
+  print(paste0("Movie: ",as.character(movies[which(movies$movieId == i), 2]),", Similarity score: ",df_sample[count, 2]))
+  count = count +1
+}
+
+```
